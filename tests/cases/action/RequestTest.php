@@ -954,9 +954,6 @@ class RequestTest extends \lithium\test\Unit {
 
 		$request->params['locale'] = 'fr';
 		$this->assertEqual('fr', $request->locale());
-
-		$request->locale('de');
-		$this->assertEqual('de', $request->locale());
 	}
 
 	/**

@@ -50,6 +50,7 @@ class Request extends \lithium\core\Object {
 	/**
 	 * Holds the value of the current locale, set through the `locale()` method.
 	 *
+	 * @deprecated
 	 * @var string
 	 */
 	protected $_locale = null;
@@ -167,15 +168,19 @@ class Request extends \lithium\core\Object {
 	}
 
 	/**
-	 * Sets or returns the current locale string. For more information, see
+	  * Returns the locale associated with the request. For more information, see
 	 * "[Globalization](http://lithify.me/docs/manual/07_globalization)" in the manual.
 	 *
-	 * @param string $locale An optional locale string like `'en'`, `'en_US'` or `'de_DE'`. If
-	 *               specified, will overwrite the existing locale.
+	 * @param string $locale Deprecated - an optional locale string to overwrite request locale.
 	 * @return Returns the currently set locale string.
 	 */
 	public function locale($locale = null) {
 		if ($locale) {
+			$message  = "Support for setting the locale on the request has been deprecated. ";
+			$message .= "Please update your code to set the effective locale by using ";
+			$message .= "`lithium\core\Environment::set(true, array('locale' => ...))`.";
+			trigger_error($message, E_USER_DEPRECATED);
+
 			$this->_locale = $locale;
 		}
 		return $this->_locale;
