@@ -326,7 +326,13 @@ class Form extends \lithium\core\Object {
 		$query = $this->_query;
 		$data = $this->_filters($credentials->data);
 
-		$conditions = $this->_scope + array_diff_key($data, $this->_validators);
+        $additionalFieldsToRemove = array();
+        foreach (array_keys($this->_validators) as $v) {
+            if (isset($this->_fields[$v])) {
+                $additionalFieldsToRemove[$this->_fields[$v]] = true;
+            }
+        }
+		$conditions = $this->_scope + array_diff_key($data, ($this->_validators + $additionalFieldsToRemove));
 		$user = $model::$query(compact('conditions') + $options);
 
 		if (!$user) {
