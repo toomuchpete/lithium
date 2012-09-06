@@ -20,6 +20,7 @@ use lithium\tests\mocks\template\helper\MockFormRenderer;
 class FormTest extends \lithium\test\Unit {
 
 	protected $_model = 'lithium\tests\mocks\template\helper\MockFormPost';
+	protected $_model2 = 'lithium\tests\mocks\template\helper\MockFormPostInfo';
 
 	/**
 	 * Test object instance.
@@ -140,8 +141,8 @@ class FormTest extends \lithium\test\Unit {
 			'title' => 'This is a saved post',
 			'body' => 'This is the body of the saved post'
 		)));
-		$result = $this->form->create($record);
-		$this->assertTags($result, array(
+
+		$this->assertTags($this->form->create($record), array(
 			'form' => array('action' => "{$this->base}posts", 'method' => 'post')
 		));
 	}
@@ -172,7 +173,9 @@ class FormTest extends \lithium\test\Unit {
 			'id' => '5',
 			'author_id' => '2',
 			'title' => 'This is a saved post',
-			'body' => 'This is the body of the saved post'
+			'body' => 'This is the body of the saved post',
+			'zeroInt' => 0,
+			'zeroString' => "0"
 		)));
 
 		$result = $this->form->create($record);
@@ -186,11 +189,21 @@ class FormTest extends \lithium\test\Unit {
 			'value' => 'This is a saved post', 'id' => 'MockFormPostTitle'
 		)));
 
-		$result = $this->form->end();
-		$this->assertTags($result, array('/form'));
 
-		$result = $this->form->text('title');
+		$result = $this->form->text('zeroInt');
 		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'zeroInt',
+			'value' => '0', 'id' => 'MockFormPostZeroInt'
+		)));
+		$result = $this->form->text('zeroString');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'zeroString',
+			'value' => '0', 'id' => 'MockFormPostZeroString'
+		)));
+
+		$this->assertEqual('</form>', $this->form->end());
+
+		$this->assertTags($this->form->text('title'), array('input' => array(
 			'type' => 'text', 'name' => 'title', 'id' => 'Title'
 		)));
 	}
@@ -383,12 +396,16 @@ class FormTest extends \lithium\test\Unit {
 			))
 		));
 
-		$document = new Document(array('model' => $this->_model, 'data' => array('subdocument' => array('foo' => true))));
+		$document = new Document(array('model' => $this->_model, 'data' =>
+			array('subdocument' => array('foo' => true))
+		));
 		$this->form->create($document);
 
 		$result = $this->form->checkbox('subdocument.foo');
 		$this->assertTags($result, array(
-			array('input' => array('type' => 'hidden', 'value' => '', 'name' => 'subdocument[foo]')),
+			array('input' => array(
+				'type' => 'hidden', 'value' => '', 'name' => 'subdocument[foo]')
+			),
 			array('input' => array(
 				'type' => 'checkbox', 'value' => '1', 'name' => 'subdocument[foo]',
 				'checked' => 'checked', 'id' => 'MockFormPostSubdocumentFoo'
@@ -614,8 +631,9 @@ class FormTest extends \lithium\test\Unit {
 	}
 
 	/**
-	 * When trying to determine which option of a select box should be selected, we should be 
-	 * int/string agnostic because it all looks the same in HTML.
+	 * When trying to determine which option of a select box should be selected, we should be
+	 * integer/string agnostic because it all looks the same in HTML.
+	 *
 	 */
 	public function testSelectTypeAgnosticism() {
 		$taglist = array(
@@ -629,7 +647,7 @@ class FormTest extends \lithium\test\Unit {
 			array('option' => array('value' => '2')),
 			'Two',
 			'/option',
-			'/select'			
+			'/select'
 		);
 
 		$result = $this->form->select(
@@ -1223,9 +1241,16 @@ class FormTest extends \lithium\test\Unit {
 	 * Tests that magic method support can be used to automatically generate a `<button />` tag
 	 * based on the default string template.
 	 */
-	public function testAutoMagicButton() {
+	public function testButton() {
 		$result = $this->form->button('Foo!', array('id' => 'bar'));
 		$this->assertTags($result, array('button' => array('id' => 'bar'), 'Foo!', '/button'));
+
+		$result = $this->form->button('Continue >', array('type' => 'submit'));
+		$this->assertTags($result, array(
+			'button' => array('type' => 'submit', 'id' => 'Continue'),
+			'Continue &gt;',
+			'/button'
+		));
 	}
 
 	/**
@@ -1252,6 +1277,136 @@ class FormTest extends \lithium\test\Unit {
 			'label' => array('for' => 'Name'), 'Name', '/label', ':',
 			'input' => array('type' => 'radio', 'name' => 'name', 'id' => 'Name', 'value' => '1')
 		));
+	}
+
+	public function testFormCreationMultipleBindings() {
+		$record1 = new Record(array('model' => $this->_model, 'data' => array(
+			'author_id' => '2',
+			'title' => 'New post',
+			'body' => 'New post body'
+		)));
+		$record2 = new Record(array('model' => $this->_model2, 'data' => array(
+			'section' => 'New post section',
+			'notes' => 'New post notes'
+		)));
+
+		$result = $this->form->create(array(
+			'MockFormPost' => $record1,
+			'MockFormPostInfo' => $record2
+		));
+		$this->assertTags($result, array(
+			'form' => array('action' => "{$this->base}posts", 'method' => 'post')
+		));
+
+		$result = $this->form->text('title');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'title',
+			'value' => 'New post', 'id' => 'MockFormPostTitle'
+		)));
+
+		$result = $this->form->text('MockFormPost.title');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'MockFormPost[title]',
+			'value' => 'New post', 'id' => 'MockFormPostTitle'
+		)));
+
+		$result = $this->form->text('body');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'body',
+			'value' => 'New post body', 'id' => 'MockFormPostBody'
+		)));
+
+		$result = $this->form->text('MockFormPostInfo.section');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'MockFormPostInfo[section]',
+			'value' => 'New post section', 'id' => 'MockFormPostInfoSection'
+		)));
+
+		$result = $this->form->end();
+		$this->assertTags($result, array('/form'));
+
+		$result = $this->form->create(array('a' => $record1, 'b' => $record2));
+		$this->assertTags($result, array(
+			'form' => array('action' => "{$this->base}posts", 'method' => 'post')
+		));
+
+		$result = $this->form->text('title');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'title',
+			'value' => 'New post', 'id' => 'MockFormPostTitle'
+		)));
+
+		$result = $this->form->text('a.title');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'a[title]',
+			'value' => 'New post', 'id' => 'MockFormPostTitle'
+		)));
+
+		$result = $this->form->text('body');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'body',
+			'value' => 'New post body', 'id' => 'MockFormPostBody'
+		)));
+
+		$result = $this->form->text('b.section');
+		$this->assertTags($result, array('input' => array(
+			'type' => 'text', 'name' => 'b[section]',
+			'value' => 'New post section', 'id' => 'MockFormPostInfoSection'
+		)));
+
+		$result = $this->form->end();
+		$this->assertTags($result, array('/form'));
+	}
+
+	public function testFormErrorMultipleBindings() {
+		$record1 = new Record(array('model' => $this->_model, 'data' => array(
+			'author_id' => '2',
+			'title' => 'New post',
+			'body' => 'New post body'
+		)));
+		$record2 = new Record(array('model' => $this->_model2, 'data' => array(
+			'section' => 'New post section',
+			'notes' => 'New post notes'
+		)));
+
+		$record1->errors(array('title' => 'Not a cool title'));
+		$record2->errors(array('section' => 'Not a cool section'));
+
+		$this->form->create(compact('record1', 'record2'));
+
+		$result = $this->form->error('title');
+		$this->assertTags($result, array(
+			'div' => array('class' => 'error'), 'Not a cool title', '/div'
+		));
+
+		$result = $this->form->error('body');
+		$this->assertTrue(empty($result));
+
+		$result = $this->form->error('record1.title');
+		$this->assertTags($result, array(
+			'div' => array('class' => 'error'), 'Not a cool title', '/div'
+		));
+
+		$result = $this->form->error('record2.section');
+		$this->assertTags($result, array(
+			'div' => array('class' => 'error'), 'Not a cool section', '/div'
+		));
+	}
+
+	public function testBindingByName() {
+		$post = new Record(array('model' => $this->_model, 'data' => array(
+			'author_id' => '2',
+			'title' => 'New post',
+			'body' => 'New post body'
+		)));
+		$info = new Record(array('model' => $this->_model2, 'data' => array(
+			'section' => 'New post section',
+			'notes' => 'New post notes'
+		)));
+
+		$this->form->create(compact('post', 'info'));
+		$this->assertEqual($post, $this->form->binding('post'));
+		$this->assertEqual($info, $this->form->binding('info'));
 	}
 }
 
